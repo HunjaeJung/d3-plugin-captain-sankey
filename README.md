@@ -8,6 +8,7 @@
 ![Captain Sankey Diagram Example](https://cloud.githubusercontent.com/assets/44946/8294625/08e5068c-193e-11e5-91f1-16dd6b72c0ec.png)
 
 - Leave Path Attribute Newly Added By Hunjae Jung (`examples/example03-basic-with-leave-path.html`)
+
 ![With Leave Path](http://hunjae.com/content/images/2015/09/-----2015-09-11-15-07-45.png)
 
 ## Basic usage
