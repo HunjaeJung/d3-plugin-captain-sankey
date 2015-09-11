@@ -5,7 +5,8 @@ d3.sankey = function() {
       size = [1, 1],
       nodes = [],
       links = [],
-      sinksRight = true;
+      sinksRight = true,
+      leavePath = false;
 
   sankey.nodeWidth = function(_) {
     if (!arguments.length) return nodeWidth;
@@ -43,11 +44,19 @@ d3.sankey = function() {
     return sankey;
  };
 
+ sankey.leavePath = function (_) {
+    if (!arguments.length) return leavePath;
+    leavePath = _;
+    return sankey;
+ }
+
   sankey.layout = function(iterations) {
     computeNodeLinks();
     computeNodeValues();
     computeNodeBreadths();
     computeNodeDepths(iterations);
+    if(leavePath) computeLeavePath();
+
     return sankey;
   };
 
@@ -61,17 +70,36 @@ d3.sankey = function() {
     var curvature = .5;
 
     function link(d) {
-      var x0 = d.source.x + d.source.dx,
-          x1 = d.target.x,
-          xi = d3.interpolateNumber(x0, x1),
-          x2 = xi(curvature),
-          x3 = xi(1 - curvature),
-          y0 = d.source.y + d.sy + d.dy / 2,
-          y1 = d.target.y + d.ty + d.dy / 2;
-      return "M" + x0 + "," + y0
-           + "C" + x2 + "," + y0
-           + " " + x3 + "," + y1
-           + " " + x1 + "," + y1;
+        if(!d.isLeavePath){
+            var x0 = d.source.x + d.source.dx,
+                x1 = d.target.x,
+                xi = d3.interpolateNumber(x0, x1),
+                x2 = xi(curvature),
+                x3 = xi(1 - curvature),
+                y0 = d.source.y + d.sy + d.dy / 2,
+                y1 = d.target.y + d.ty + d.dy / 2;
+
+            return "M" + x0 + "," + y0
+            + "C" + x2 + "," + y0
+            + " " + x3 + "," + y1
+            + " " + x1 + "," + y1;
+        }else{
+            var x0 = d.source.x + d.source.dx,
+                y0 = d.source.y + d.sy,
+                x1 = x0 + Math.max(d.dy/2, 5),
+                y1 = y0 + d.dy + 10,
+                xi = d3.interpolateNumber(x0, x1),
+                x2 = xi(curvature),
+                yi = d3.interpolateNumber(y0, y1),
+                y2 = yi(curvature);
+
+            return "M" + x0 + "," + y0
+            + "C" + x2 + "," + y0
+            + " " + x1 + "," + y0
+            + " " + x1 + "," + y2
+            + "L" + x1 + "," + y1
+            + "L" + x0 + "," + y1
+        }
     }
 
     link.curvature = function(_) {
@@ -304,6 +332,35 @@ d3.sankey = function() {
     function ascendingTargetDepth(a, b) {
       return a.target.y - b.target.y;
     }
+  }
+
+  function computeLeavePath() {
+        nodes.forEach(function(node, index){
+            // Skip the last node
+            if(node.sourceLinks.length == 0 && index == nodes.length - 1) return;
+
+            var leavePath = new Object();
+            var linkDySum = 0;
+            var linkValueSum = 0;
+
+            node.sourceLinks.forEach(function(link){
+                linkDySum += link.dy;
+                linkValueSum += link.value;
+            });
+
+            leavePath.dy = node.dy - linkDySum;
+            if(leavePath.dy > 0) {
+                leavePath.isLeavePath = true;
+                leavePath.value = node.value - linkValueSum;
+                leavePath.sy = linkDySum;
+                leavePath.source = node;
+                leavePath.target = {};
+                leavePath.target.name = "leave";
+
+                // Addd node to link
+                links.push(leavePath);
+            }
+        });
   }
 
   // Y-position of the middle of a node.
